@@ -110,6 +110,29 @@ jobs:
           [[ "$(git diff -U0 Casks/txtodo-desktop.rb | grep -cE '^\+ +sha256 ')" == 2 ]]
           git diff --stat
 
+      # `app` names the bundle inside the .dmg, and that name follows `productName` in the app's
+      # tauri.conf.json: desktop.app through v0.0.2, txtodo.app from v0.0.3. Nothing above notices a
+      # rename (the stanza is not a version or a hash), so the PR would look right and
+      # `brew install --cask` would then fail. Mount each .dmg and look.
+      # https://docs.brew.sh/Cask-Cookbook#stanza-app
+      - name: Check the cask's app is inside each .dmg
+        if: steps.latest.outputs.bump == 'true'
+        run: |
+          app="$(sed -nE 's/^[[:space:]]*app "([^"]+)"[[:space:]]*$/\1/p' Casks/txtodo-desktop.rb)"
+          [[ -n "${app}" ]]
+          for dmg in assets/desktop-macos-*.dmg; do
+            mnt="$(mktemp -d)"
+            hdiutil attach -readonly -nobrowse -noverify -mountpoint "${mnt}" "${dmg}"
+            ls "${mnt}"
+            found=false
+            [[ -d "${mnt}/${app}" ]] && found=true
+            hdiutil detach "${mnt}"
+            if [[ "${found}" != true ]]; then
+              echo "::error::Casks/txtodo-desktop.rb says app \"${app}\" but ${dmg} does not contain it (listing above). Fix the app stanza on the bump branch by hand."
+              exit 1
+            fi
+          done
+
       - name: Open the PR
         if: steps.latest.outputs.bump == 'true'
         env:
