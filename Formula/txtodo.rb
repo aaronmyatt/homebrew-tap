@@ -51,27 +51,27 @@ class Txtodo < Formula
   # distro Homebrew supports. The glibc build (txtodo-linux-x86_64-gnu) is deliberately not used.
   on_linux do
     on_arm do
-      url "https://github.com/aaronmyatt/txtodo/releases/download/v0.0.2/txtodo-linux-aarch64-musl"
-      sha256 "3c15f5c1c584a5c810e6a41285edd99b90aeeb8562b9664e063383e3cb6214bf"
+      url "https://github.com/aaronmyatt/txtodo/releases/download/v0.0.3/txtodo-linux-aarch64-musl"
+      sha256 "bf12396eabf413cb9052bddd21d25da53b44585057758fe74cdcb8f679206087"
       resource "txtodod" do
-        url "https://github.com/aaronmyatt/txtodo/releases/download/v0.0.2/txtodod-linux-aarch64-musl"
-        sha256 "307f512902c6ac3d34986c0ad90b3f65adc6ec7b3614a957bca9272e29c280e7"
+        url "https://github.com/aaronmyatt/txtodo/releases/download/v0.0.3/txtodod-linux-aarch64-musl"
+        sha256 "c9b3e82293c23bfa35be5cb37ad9422d7c500bdc5be5d007807e7501b2c8f978"
       end
       resource "txtodo-tui" do
-        url "https://github.com/aaronmyatt/txtodo/releases/download/v0.0.2/txtodo-tui-linux-aarch64-musl"
-        sha256 "4297e4eeaf056177cf3c2cda75e8a37f2898ade76896ed018c4dcd674e95f7f8"
+        url "https://github.com/aaronmyatt/txtodo/releases/download/v0.0.3/txtodo-tui-linux-aarch64-musl"
+        sha256 "73f9542c671b496fa992441a65e6a5c69eb4225bf6d2c4f4fe28e156c230fafe"
       end
     end
     on_intel do
-      url "https://github.com/aaronmyatt/txtodo/releases/download/v0.0.2/txtodo-linux-x86_64-musl"
-      sha256 "64275b7c10b19eae24c2b7acfb1c01eb88d4b7ed04c42afd414d5dae741b0e15"
+      url "https://github.com/aaronmyatt/txtodo/releases/download/v0.0.3/txtodo-linux-x86_64-musl"
+      sha256 "601b9b4e0d3f3facf3efb9ef9ddb23c9e52bbcd684403edb70e69c7f316dc32a"
       resource "txtodod" do
-        url "https://github.com/aaronmyatt/txtodo/releases/download/v0.0.2/txtodod-linux-x86_64-musl"
-        sha256 "f70ec8629789005f8ee3cb2f30a0f19bbe92f399db4cd1a7f342be6cb6fb0325"
+        url "https://github.com/aaronmyatt/txtodo/releases/download/v0.0.3/txtodod-linux-x86_64-musl"
+        sha256 "cfa0a1ea8f64ecaf3e4ea448c5f4ad794fb624a72d6fdfbe31a6b2190ace3b32"
       end
       resource "txtodo-tui" do
-        url "https://github.com/aaronmyatt/txtodo/releases/download/v0.0.2/txtodo-tui-linux-x86_64-musl"
-        sha256 "49a638477aff4506a0a671c55f216356977eb77d60c18c6f0a27a76b894fe021"
+        url "https://github.com/aaronmyatt/txtodo/releases/download/v0.0.3/txtodo-tui-linux-x86_64-musl"
+        sha256 "768cab89b1838f0cc8565d83fe325290015da072abcaa8be45b42a5e22de1532"
       end
     end
   end
