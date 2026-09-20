@@ -4,7 +4,7 @@
 # Replaces the `brew tap-new` scaffold's `brew bump --open-pr`. That command cannot rewrite this
 # formula: every url sits inside on_macos/on_arm|on_intel, next to two extra `resource` blocks, and
 # it died with "Could not find 'url' stanza!" (run 35509023900). bin/update-formula.sh and
-# bin/update-cask.sh already stamp all 6 formula url/sha256 pairs and both cask ones, so this
+# bin/update-cask.sh already stamp all 12 formula url/sha256 pairs and both cask ones, so this
 # workflow only fetches, verifies, stamps, checks and opens the PR.
 #
 # A PR opened with GITHUB_TOKEN does not start other workflows (tests.yml never runs on it), and
@@ -31,8 +31,7 @@ defaults:
 
 jobs:
   bump:
-    # macOS runner: bin/update-*.sh use BSD `sed -i ''`. The formula's urls all sit in on_macos, so
-    # Linux could not load it anyway. Runner labels:
+    # macOS runner: bin/update-*.sh use BSD `sed -i ''`. Runner labels:
     # https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners
     runs-on: macos-latest
     permissions:
@@ -62,13 +61,13 @@ jobs:
             echo "bump=true" >> "${GITHUB_OUTPUT}"
           fi
 
-      # Every macOS binary, the desktop .dmgs and their `.bundle` signatures:
+      # Every macOS and static Linux (musl) binary, the desktop .dmgs and their `.bundle` signatures:
       # https://cli.github.com/manual/gh_release_download
       - name: Download the release's macOS assets
         if: steps.latest.outputs.bump == 'true'
         env:
           TAG: ${{ steps.latest.outputs.tag }}
-        run: gh release download "${TAG}" --repo "${UPSTREAM}" --pattern '*macos*' --dir assets
+        run: gh release download "${TAG}" --repo "${UPSTREAM}" --pattern '*macos*' --pattern '*linux*-musl*' --dir assets
 
       # Same check release.yml's publish job runs, pinned to this exact tag: a file that was not
       # signed by that tag's own release workflow never reaches a sha256 in the formula.
@@ -97,15 +96,16 @@ jobs:
           bin/update-cask.sh "${TAG}" assets
 
       # The check this workflow exists for: brew bump only ever moved the top-level url, so count
-      # every url and sha256 that moved. 3 binaries x 2 arches = 6 formula pairs, 2 cask ones.
+      # every url and sha256 that moved. 3 binaries x 4 platforms (macOS and Linux, arm and intel) = 12
+      # formula pairs, 2 cask ones.
       - name: Check every url and sha256 moved
         if: steps.latest.outputs.bump == 'true'
         env:
           TAG: ${{ steps.latest.outputs.tag }}
         run: |
-          [[ "$(grep -c "/releases/download/${TAG}/" Formula/txtodo.rb)" == 6 ]]
-          [[ "$(grep -cE '/releases/download/v[^/]+/' Formula/txtodo.rb)" == 6 ]]
-          [[ "$(git diff -U0 Formula/txtodo.rb | grep -cE '^\+ +sha256 ')" == 6 ]]
+          [[ "$(grep -c "/releases/download/${TAG}/" Formula/txtodo.rb)" == 12 ]]
+          [[ "$(grep -cE '/releases/download/v[^/]+/' Formula/txtodo.rb)" == 12 ]]
+          [[ "$(git diff -U0 Formula/txtodo.rb | grep -cE '^\+ +sha256 ')" == 12 ]]
           grep -q "version \"${TAG#v}\"" Casks/txtodo-desktop.rb
           [[ "$(git diff -U0 Casks/txtodo-desktop.rb | grep -cE '^\+ +sha256 ')" == 2 ]]
           git diff --stat
@@ -124,4 +124,4 @@ jobs:
           # https://cli.github.com/manual/gh_pr_create
           gh pr create --base main --head "bump/${TAG}" \
             --title "txtodo ${TAG}" \
-            --body "Stamps every url and sha256 in Formula/txtodo.rb (3 binaries x 2 arches) and Casks/txtodo-desktop.rb to https://github.com/${UPSTREAM}/releases/tag/${TAG}. Every asset's Sigstore signature was verified against that tag's release.yml first. Opened by autobump.yml; tests.yml does not run on it, so check it by hand."
+            --body "Stamps every url and sha256 in Formula/txtodo.rb (3 binaries x macOS/Linux x arm/intel) and Casks/txtodo-desktop.rb to https://github.com/${UPSTREAM}/releases/tag/${TAG}. Every asset's Sigstore signature was verified against that tag's release.yml first. Opened by autobump.yml; tests.yml does not run on it, so check it by hand."

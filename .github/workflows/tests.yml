@@ -17,11 +17,12 @@ jobs:
   test-bot:
     strategy:
       matrix:
-        # macOS only: Formula/txtodo.rb keeps every url inside on_macos, so on Linux Homebrew
-        # fails to load it ("formula requires at least a URL"). Re-add the scaffold's ubuntu
-        # `include` leg once the formula grows on_linux urls.
-        # https://docs.brew.sh/Formula-Cookbook#url-and-sha256
         os: [ macos-26 ]
+        include:
+          - os: ubuntu-latest
+            container:
+              image: ghcr.io/homebrew/brew:main
+              options: --privileged
     runs-on: ${{ matrix.os }}
     container: ${{ fromJSON(toJSON(matrix.container)) }} # zizmor: ignore[unpinned-images]
     permissions:
