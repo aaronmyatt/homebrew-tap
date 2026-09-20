@@ -48,13 +48,10 @@ cask "txtodo-desktop" do
   depends_on formula: "txtodo"
   depends_on :macos
 
-  # `productName: "desktop"` in apps/desktop/src-tauri/tauri.conf.json is what `tauri build`
-  # actually names the bundle (verified locally: a real build produces `desktop.app`) — not
-  # `txtodo-desktop` or `Txtodo.app`. Renaming it is a product-naming call outside this task's own
-  # scope (a Svelte/Tauri config change with its own knock-on effects on the window title etc.),
-  # so the cask installs exactly what CI really ships rather than assuming a rename that hasn't
-  # happened.
-  app "desktop.app"
+  # `productName` in apps/desktop/src-tauri/tauri.conf.json is what `tauri build` actually names
+  # the bundle. It was "desktop" through v0.0.2 (that .dmg holds desktop.app) and is "txtodo" from
+  # v0.0.3 on (checked by mounting both .dmgs), so this stanza changes with the version bump.
+  app "txtodo.app"
 
   # Same three locations Apple's own sandboxing/App Support convention puts a document-free
   # utility app's state in, keyed by tauri.conf.json's `identifier` — this app writes no other
