@@ -11,7 +11,7 @@ set -euo pipefail
 
 TAG="${1:?usage: update-formula.sh <tag> <assets-dir>}"
 ASSETS="${2:?usage: update-formula.sh <tag> <assets-dir>}"
-FORMULA="$(cd "$(dirname "$0")" && pwd)/Formula/txtodo.rb"
+FORMULA="$(cd "$(dirname "$0")/.." && pwd)/Formula/txtodo.rb"
 
 ASSET_NAMES=(
   txtodo-macos-aarch64 txtodod-macos-aarch64 txtodo-tui-macos-aarch64

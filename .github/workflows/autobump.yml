@@ -1,7 +1,19 @@
-# brew tap-new uses this file to generate an autobump workflow for the new tap
-name: brew bump
+# Opens a PR that stamps Formula/txtodo.rb and Casks/txtodo-desktop.rb with the latest
+# aaronmyatt/txtodo GitHub release.
+#
+# Replaces the `brew tap-new` scaffold's `brew bump --open-pr`. That command cannot rewrite this
+# formula: every url sits inside on_macos/on_arm|on_intel, next to two extra `resource` blocks, and
+# it died with "Could not find 'url' stanza!" (run 35509023900). bin/update-formula.sh and
+# bin/update-cask.sh already stamp all 6 formula url/sha256 pairs and both cask ones, so this
+# workflow only fetches, verifies, stamps, checks and opens the PR.
+#
+# A PR opened with GITHUB_TOKEN does not start other workflows (tests.yml never runs on it), and
+# needs Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests".
+# Workflow syntax: https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions
+name: bump to latest txtodo release
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -18,26 +30,98 @@ defaults:
     shell: bash -xeuo pipefail {0}
 
 jobs:
-  autobump:
-    # macOS runner: the formula's urls all sit in on_macos, so `brew bump` on Linux fails to load it
-    # ("formula requires at least a URL"). Runner labels: https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners
+  bump:
+    # macOS runner: bin/update-*.sh use BSD `sed -i ''`. The formula's urls all sit in on_macos, so
+    # Linux could not load it anyway. Runner labels:
+    # https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners
     runs-on: macos-latest
     permissions:
       contents: write
       pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      UPSTREAM: aaronmyatt/txtodo
     steps:
-      - name: Set up Homebrew
-        id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@f8d4222eb633e65c2a0157383cf80861fc7fae7f # 2026.09.07.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Set up git
-        id: git_setup
-        uses: Homebrew/actions/git-user-config@f8d4222eb633e65c2a0157383cf80861fc7fae7f # 2026.09.07.1
+      # `gh release view` with no tag answers the repo's "Latest" release (never a draft or
+      # prerelease): https://cli.github.com/manual/gh_release_view
+      - name: Find the latest release and skip if the tap is already on it
+        id: latest
+        run: |
+          tag="$(gh release view --repo "${UPSTREAM}" --json tagName --jq .tagName)"
+          current="$(grep -m1 -oE '/releases/download/v[^/]+/' Formula/txtodo.rb | cut -d/ -f4)"
+          echo "tag=${tag}" >> "${GITHUB_OUTPUT}"
+          if [[ "${tag}" == "${current}" ]]; then
+            echo "tap is already on ${tag}"
+            echo "bump=false" >> "${GITHUB_OUTPUT}"
+          elif git ls-remote --exit-code --heads origin "bump/${tag}"; then
+            echo "branch bump/${tag} already exists; not opening a second PR"
+            echo "bump=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "bump=true" >> "${GITHUB_OUTPUT}"
+          fi
 
-      - name: Bump formulae
+      # Every macOS binary, the desktop .dmgs and their `.bundle` signatures:
+      # https://cli.github.com/manual/gh_release_download
+      - name: Download the release's macOS assets
+        if: steps.latest.outputs.bump == 'true'
         env:
-          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_GIT_COMMITTER_NAME: ${{ steps.git_setup.outputs.name }}
-          HOMEBREW_GIT_COMMITTER_EMAIL: ${{ steps.git_setup.outputs.email }}
-          TAP_NAME: ${{ steps.set-up-homebrew.outputs.tap-name }}
-        run: brew bump --no-fork --open-pr --formulae --bump-synced --tap="$TAP_NAME"
+          TAG: ${{ steps.latest.outputs.tag }}
+        run: gh release download "${TAG}" --repo "${UPSTREAM}" --pattern '*macos*' --dir assets
+
+      # Same check release.yml's publish job runs, pinned to this exact tag: a file that was not
+      # signed by that tag's own release workflow never reaches a sha256 in the formula.
+      # https://docs.sigstore.dev/cosign/verifying/verify/#verify-a-signature-on-a-blob
+      - name: Verify every asset's Sigstore signature
+        if: steps.latest.outputs.bump == 'true'
+        env:
+          TAG: ${{ steps.latest.outputs.tag }}
+        run: |
+          brew install cosign
+          for f in assets/*; do
+            [[ "${f}" == *.bundle ]] && continue
+            cosign verify-blob \
+              --certificate-identity "https://github.com/${UPSTREAM}/.github/workflows/release.yml@refs/tags/${TAG}" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              --bundle "${f}.bundle" \
+              "${f}"
+          done
+
+      - name: Stamp the formula and the cask
+        if: steps.latest.outputs.bump == 'true'
+        env:
+          TAG: ${{ steps.latest.outputs.tag }}
+        run: |
+          bin/update-formula.sh "${TAG}" assets
+          bin/update-cask.sh "${TAG}" assets
+
+      # The check this workflow exists for: brew bump only ever moved the top-level url, so count
+      # every url and sha256 that moved. 3 binaries x 2 arches = 6 formula pairs, 2 cask ones.
+      - name: Check every url and sha256 moved
+        if: steps.latest.outputs.bump == 'true'
+        env:
+          TAG: ${{ steps.latest.outputs.tag }}
+        run: |
+          [[ "$(grep -c "/releases/download/${TAG}/" Formula/txtodo.rb)" == 6 ]]
+          [[ "$(grep -cE '/releases/download/v[^/]+/' Formula/txtodo.rb)" == 6 ]]
+          [[ "$(git diff -U0 Formula/txtodo.rb | grep -cE '^\+ +sha256 ')" == 6 ]]
+          grep -q "version \"${TAG#v}\"" Casks/txtodo-desktop.rb
+          [[ "$(git diff -U0 Casks/txtodo-desktop.rb | grep -cE '^\+ +sha256 ')" == 2 ]]
+          git diff --stat
+
+      - name: Open the PR
+        if: steps.latest.outputs.bump == 'true'
+        env:
+          TAG: ${{ steps.latest.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "bump/${TAG}"
+          git add Formula/txtodo.rb Casks/txtodo-desktop.rb
+          git commit -m "txtodo ${TAG}"
+          git push origin "bump/${TAG}"
+          # https://cli.github.com/manual/gh_pr_create
+          gh pr create --base main --head "bump/${TAG}" \
+            --title "txtodo ${TAG}" \
+            --body "Stamps every url and sha256 in Formula/txtodo.rb (3 binaries x 2 arches) and Casks/txtodo-desktop.rb to https://github.com/${UPSTREAM}/releases/tag/${TAG}. Every asset's Sigstore signature was verified against that tag's release.yml first. Opened by autobump.yml; tests.yml does not run on it, so check it by hand."

@@ -25,7 +25,7 @@ set -euo pipefail
 
 TAG="${1:?usage: update-cask.sh <tag> <assets-dir>}"
 ASSETS="${2:?usage: update-cask.sh <tag> <assets-dir>}"
-CASK="$(cd "$(dirname "$0")" && pwd)/Casks/txtodo-desktop.rb"
+CASK="$(cd "$(dirname "$0")/.." && pwd)/Casks/txtodo-desktop.rb"
 
 ASSET_NAMES=(desktop-macos-aarch64.dmg desktop-macos-x86_64.dmg)
 for name in "${ASSET_NAMES[@]}"; do
