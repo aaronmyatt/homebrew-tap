@@ -3,8 +3,7 @@
 `brew install aaronmyatt/tap/txtodo` — todo.sh-compatible CLI with real-time, end-to-end-encrypted
 multi-device sync (https://github.com/aaronmyatt/txtodo). Ships `txtodo` (the CLI), `txtodod` (the
 sync daemon) and `txtodo-tui` (the ratatui client), for macOS arm64/x86_64 and Linux arm64/x86_64
-(the static musl builds; the formula loads on Linux, but no install has been tried on a real Linux
-machine yet).
+(the static musl builds; x86_64 install and `brew test` pass in CI, arm64 is untried).
 
 `brew install --cask aaronmyatt/tap/txtodo-desktop` — the Tauri desktop app, macOS arm64/x86_64.
 Depends on the `txtodo` formula above (bundles `txtodod` as a sidecar too, but the formula install
@@ -27,8 +26,9 @@ stanza!"). Instead it:
    is inside each `.dmg`,
 5. opens the PR from `bump/<tag>`.
 
-A PR opened this way does not run `tests.yml` (a workflow started by the default `GITHUB_TOKEN`
-does not start other workflows), so review it by hand. The scripts' source of truth is
+The PR it opens does not run `tests.yml` (a workflow started by the default `GITHUB_TOKEN` does not
+start other workflows); pushing any commit to its branch does, and that runs the full formula test on
+macOS and Linux. The scripts' source of truth is
 https://github.com/aaronmyatt/txtodo/tree/main/deploy/homebrew; the copies here differ only in
 the path to `Formula/`/`Casks/`. Full design and history:
 https://github.com/aaronmyatt/txtodo/blob/main/tasks/brew-distribution/notes.md
