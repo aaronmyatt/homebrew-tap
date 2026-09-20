@@ -2,7 +2,9 @@
 
 `brew install aaronmyatt/tap/txtodo` — todo.sh-compatible CLI with real-time, end-to-end-encrypted
 multi-device sync (https://github.com/aaronmyatt/txtodo). Ships `txtodo` (the CLI), `txtodod` (the
-sync daemon) and `txtodo-tui` (the ratatui client), macOS arm64/x86_64.
+sync daemon) and `txtodo-tui` (the ratatui client), for macOS arm64/x86_64 and Linux arm64/x86_64
+(the static musl builds; the formula loads on Linux, but no install has been tried on a real Linux
+machine yet).
 
 `brew install --cask aaronmyatt/tap/txtodo-desktop` — the Tauri desktop app, macOS arm64/x86_64.
 Depends on the `txtodo` formula above (bundles `txtodod` as a sidecar too, but the formula install
@@ -11,16 +13,25 @@ flag it "unidentified developer" until an Apple Developer ID cert is provisioned
 
 ## Version bumps
 
-`.github/workflows/autobump.yml` (standard `brew tap-new` scaffolding) runs `brew bump --open-pr`
-daily against the main txtodo repo's GitHub releases. If its per-resource handling of this
-formula's two `resource` blocks (`txtodod`, `txtodo-tui`) ever needs a hand, `bin/update-formula.sh
-<tag> <assets-dir>` does the same url/sha256 substitution directly against a local directory of
-downloaded release assets — see its own header comment and
-https://github.com/aaronmyatt/txtodo/blob/main/tasks/brew-distribution/notes.md for the full
-design and what's been verified so far.
+`.github/workflows/autobump.yml` runs daily (and on demand, and when the file changes) and opens a
+PR when the main txtodo repo's latest GitHub release is newer than the formula. It does **not** use
+`brew bump`: that cannot rewrite this formula (its urls sit inside `on_macos`/`on_linux` and
+`on_arm`/`on_intel`, next to two `resource` blocks, and it fails with "Could not find 'url'
+stanza!"). Instead it:
 
-The cask has its own counterpart, `bin/update-cask.sh <tag> <assets-dir>`, for the same reason —
-see its own header comment.
+1. downloads the release's macOS and static Linux (musl) binaries and the `.dmg`s,
+2. verifies every asset's Sigstore signature against that tag's own `release.yml` run,
+3. stamps them in with `bin/update-formula.sh <tag> <assets-dir>` and `bin/update-cask.sh <tag>
+   <assets-dir>` (the same scripts work by hand against a local directory of downloaded assets),
+4. checks that all 12 formula url/sha256 pairs and both cask ones moved, and that the cask's `app`
+   is inside each `.dmg`,
+5. opens the PR from `bump/<tag>`.
+
+A PR opened this way does not run `tests.yml` (a workflow started by the default `GITHUB_TOKEN`
+does not start other workflows), so review it by hand. The scripts' source of truth is
+https://github.com/aaronmyatt/txtodo/tree/main/deploy/homebrew; the copies here differ only in
+the path to `Formula/`/`Casks/`. Full design and history:
+https://github.com/aaronmyatt/txtodo/blob/main/tasks/brew-distribution/notes.md
 
 ## Documentation
 
