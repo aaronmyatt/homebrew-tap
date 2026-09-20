@@ -19,7 +19,9 @@ defaults:
 
 jobs:
   autobump:
-    runs-on: ubuntu-latest
+    # macOS runner: the formula's urls all sit in on_macos, so `brew bump` on Linux fails to load it
+    # ("formula requires at least a URL"). Runner labels: https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners
+    runs-on: macos-latest
     permissions:
       contents: write
       pull-requests: write
