@@ -20,9 +20,10 @@ stanza!"). Instead it:
 
 1. downloads the release's macOS and static Linux (musl) binaries and the `.dmg`s,
 2. verifies every asset's Sigstore signature against that tag's own `release.yml` run,
-3. stamps them in with `bin/update-formula.sh <tag> <assets-dir>` and `bin/update-cask.sh <tag>
-   <assets-dir>` (the same scripts work by hand against a local directory of downloaded assets),
-4. checks that all 12 formula url/sha256 pairs and both cask ones moved, and that the cask's `app`
+3. stamps them in with `update-formula.sh <tag> <assets-dir>` and `update-cask.sh <tag>
+   <assets-dir>`, fetched from the main repo's `deploy/homebrew/` at that tag (the one copy; by hand,
+   run them from a txtodo checkout against a local directory of downloaded assets),
+4. checks that all 16 formula url/sha256 pairs and both cask ones moved, and that the cask's `app`
    is inside each `.dmg`,
 5. opens the PR from `bump/<tag>`.
 

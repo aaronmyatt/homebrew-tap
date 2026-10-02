@@ -3,9 +3,10 @@
 #
 # Replaces the `brew tap-new` scaffold's `brew bump --open-pr`. That command cannot rewrite this
 # formula: every url sits inside on_macos/on_arm|on_intel, next to two extra `resource` blocks, and
-# it died with "Could not find 'url' stanza!" (run 35509023900). bin/update-formula.sh and
-# bin/update-cask.sh already stamp all 12 formula url/sha256 pairs and both cask ones, so this
-# workflow only fetches, verifies, stamps, checks and opens the PR.
+# it died with "Could not find 'url' stanza!" (run 35509023900). update-formula.sh and
+# update-cask.sh stamp all 16 formula url/sha256 pairs and both cask ones, so this workflow only
+# fetches, verifies, stamps, checks and opens the PR. The scripts live in the main repo
+# (deploy/homebrew/) and are fetched at the release tag: one copy, no fork to drift.
 #
 # A PR opened with GITHUB_TOKEN does not start other workflows (tests.yml never runs on it), and
 # needs Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests".
@@ -31,7 +32,7 @@ defaults:
 
 jobs:
   bump:
-    # macOS runner: bin/update-*.sh use BSD `sed -i ''`. Runner labels:
+    # macOS runner: update-*.sh use BSD `sed -i ''`. Runner labels:
     # https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners
     runs-on: macos-latest
     permissions:
@@ -87,25 +88,37 @@ jobs:
               "${f}"
           done
 
-      - name: Stamp the formula and the cask
+      # The scripts edit Formula/ and Casks/ beside themselves, so they run from a folder that
+      # links to this tap's. Contents API, raw media type:
+      # https://docs.github.com/en/rest/repos/contents#get-repository-content
+      - name: Stamp the formula and the cask with the main repo's scripts at this tag
         if: steps.latest.outputs.bump == 'true'
         env:
           TAG: ${{ steps.latest.outputs.tag }}
         run: |
-          bin/update-formula.sh "${TAG}" assets
-          bin/update-cask.sh "${TAG}" assets
+          mkdir upstream
+          for f in update-formula.sh update-cask.sh stamp-cask-sha.py; do
+            gh api -H 'Accept: application/vnd.github.raw' \
+              "repos/${UPSTREAM}/contents/deploy/homebrew/${f}?ref=${TAG}" > "upstream/${f}"
+          done
+          chmod +x upstream/*.sh
+          ln -s ../Formula upstream/Formula
+          ln -s ../Casks upstream/Casks
+          upstream/update-formula.sh "${TAG}" assets
+          upstream/update-cask.sh "${TAG}" assets
+          rm -rf upstream
 
       # The check this workflow exists for: brew bump only ever moved the top-level url, so count
-      # every url and sha256 that moved. 3 binaries x 4 platforms (macOS and Linux, arm and intel) = 12
-      # formula pairs, 2 cask ones.
+      # every url and sha256 that moved. 4 binaries (txtodo, txtodod, txtodo-tui, txtodo-mcp) x 4
+      # platforms (macOS and Linux, arm and intel) = 16 formula pairs, 2 cask ones.
       - name: Check every url and sha256 moved
         if: steps.latest.outputs.bump == 'true'
         env:
           TAG: ${{ steps.latest.outputs.tag }}
         run: |
-          [[ "$(grep -c "/releases/download/${TAG}/" Formula/txtodo.rb)" == 12 ]]
-          [[ "$(grep -cE '/releases/download/v[^/]+/' Formula/txtodo.rb)" == 12 ]]
-          [[ "$(git diff -U0 Formula/txtodo.rb | grep -cE '^\+ +sha256 ')" == 12 ]]
+          [[ "$(grep -c "/releases/download/${TAG}/" Formula/txtodo.rb)" == 16 ]]
+          [[ "$(grep -cE '/releases/download/v[^/]+/' Formula/txtodo.rb)" == 16 ]]
+          [[ "$(git diff -U0 Formula/txtodo.rb | grep -cE '^\+ +sha256 ')" == 16 ]]
           grep -q "version \"${TAG#v}\"" Casks/txtodo-desktop.rb
           [[ "$(git diff -U0 Casks/txtodo-desktop.rb | grep -cE '^\+ +sha256 ')" == 2 ]]
           git diff --stat
@@ -147,4 +160,4 @@ jobs:
           # https://cli.github.com/manual/gh_pr_create
           gh pr create --base main --head "bump/${TAG}" \
             --title "txtodo ${TAG}" \
-            --body "Stamps every url and sha256 in Formula/txtodo.rb (3 binaries x macOS/Linux x arm/intel) and Casks/txtodo-desktop.rb to https://github.com/${UPSTREAM}/releases/tag/${TAG}. Every asset's Sigstore signature was verified against that tag's release.yml first. Opened by autobump.yml; tests.yml does not run on it, so check it by hand."
+            --body "Stamps every url and sha256 in Formula/txtodo.rb (4 binaries x macOS/Linux x arm/intel) and Casks/txtodo-desktop.rb to https://github.com/${UPSTREAM}/releases/tag/${TAG}. Every asset's Sigstore signature was verified against that tag's release.yml first. Opened by autobump.yml; tests.yml does not run on it, so check it by hand."
