@@ -20,15 +20,15 @@
 # Cask DSL: https://docs.brew.sh/Cask-Cookbook · on_arm/on_intel: same Formula::Arch selectors
 # Formula/txtodo.rb already uses (https://rubydoc.brew.sh/Formula.html).
 cask "txtodo-desktop" do
-  version "0.0.19"
+  version "0.0.20"
 
   on_arm do
-    sha256 "30ad23e49734b3f333879a89e6deec69502fea816ce3fe937e54edba012a9d1b"
+    sha256 "fe300fcb55e13cfe28a629de0859853ee0799eff67dbf98337b10332a35ab645"
 
     url "https://github.com/aaronmyatt/txtodo/releases/download/v#{version}/desktop-macos-aarch64.dmg"
   end
   on_intel do
-    sha256 "aa83b56241ad0d80bf8be6c5073af94d75b8ab95802db22e54f0a9af19953ffc"
+    sha256 "3a4a3c43e486c521f95bf59c94a84498b5a4cd023a110ff38b158ae8f67cd046"
 
     url "https://github.com/aaronmyatt/txtodo/releases/download/v#{version}/desktop-macos-x86_64.dmg"
   end
